@@ -1,0 +1,2 @@
+szk <- read.csv("C:/Users/Administrator/Desktop/szk_Virus.csv", header=TRUE,stringsAsFactors = FALSE, fileEncoding = "GB18030")
+

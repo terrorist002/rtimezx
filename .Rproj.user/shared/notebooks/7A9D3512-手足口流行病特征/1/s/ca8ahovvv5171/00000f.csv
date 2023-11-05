@@ -1,0 +1,4 @@
+"0",""
+"0","ycszk <- forecast(szktimeseries,6) #预测12个月"
+"2","错误: 找不到对象'szktimeseries'
+"

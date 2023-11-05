@@ -1,0 +1,238 @@
+---
+title: "手足口流行病特征"
+author: "guang"
+date: "2023-08-13"
+output: html_document
+location: "相二院"
+vesion: "0.1"
+20150518: "不忘初鑫"
+---
+
+```{r}
+library(tidyverse)
+szk <- read.csv("G:/文献/流行病特征分析/szk_Virus.csv", header=TRUE,stringsAsFactors = FALSE, fileEncoding = "GB18030")
+szk <- szk %>% filter(审核状态 != "已删除卡")  #去除重卡
+szk[szk[,"现住地址国标"] == 320507001 , "现住地址国标"] <- "元和街道"
+szk[szk[,"现住地址国标"] == 320507002 , "现住地址国标"] <- "黄桥街道"
+szk[szk[,"现住地址国标"] == 320507103 , "现住地址国标"] <- "黄埭镇"
+szk[szk[,"现住地址国标"] == 320507004 , "现住地址国标"] <- "北桥街道"
+szk[szk[,"现住地址国标"] == 320507007 , "现住地址国标"] <- "太平街道"
+szk[szk[,"现住地址国标"] == 320507008 , "现住地址国标"] <- "北河泾街道"
+szk[szk[,"现住地址国标"] == 320507009 , "现住地址国标"] <- "漕湖街道"
+szk[szk[,"现住地址国标"] == 320507010 , "现住地址国标"] <- "澄阳街道"
+szk[szk[,"现住地址国标"] == 320507400 , "现住地址国标"] <- "开发区"
+szk[szk[,"现住地址国标"] == 320507107 , "现住地址国标"] <- "渭塘镇"
+szk[szk[,"现住地址国标"] == 320507111 , "现住地址国标"] <- "阳澄湖镇"
+szk[szk[,"现住地址国标"] == 320507100 , "现住地址国标"] <- "望亭镇"
+szk[szk[,"现住地址国标"] == 320507500 , "现住地址国标"] <- "阳澄湖镇"
+szk[szk[,"现住地址国标"] == 32050702 , "现住地址国标"] <- "黄埭镇"
+
+szk[szk[,"确诊病毒"] == "", "确诊病毒"] <- "未检测"
+
+szkup1 <- szk
+szkup2 <- szk
+szkup1 <- szkup1 %>% filter(年龄 == "1月" | 年龄 == "2月" | 年龄 == "3月"| 年龄 == "4月"| 年龄 == "5月"| 年龄 == "6月"| 年龄 == "7月"| 年龄 == "8月"| 年龄 == "9月"| 年龄 == "10月"| 年龄 == "11月"| 年龄 == "12月")#选取小于1岁的儿童
+
+szklow <- szkup1 %>% 
+  mutate(
+   年龄段 = case_when(
+     年龄 == "1月" | 年龄 == "2月" | 年龄 == "3月"| 年龄 == "4月"| 年龄 == "5月"| 年龄 == "6月"| 年龄 == "7月"| 年龄 == "8月"| 年龄 == "9月"| 年龄 == "10月"| 年龄 == "11月"| 年龄 == "12月" ~ "0~",
+  )
+)
+
+szkup2 <- szkup2 %>% filter(!(年龄 == "1月" | 年龄 == "2月" | 年龄 == "3月"| 年龄 == "4月"| 年龄 == "5月"| 年龄 == "6月"| 年龄 == "7月"| 年龄 == "8月"| 年龄 == "9月"| 年龄 == "10月"| 年龄 == "11月"| 年龄 == "12月")) #过滤掉小于1岁的儿童
+szkup2$年龄 <-  str_replace(szkup2$年龄,"岁" ,"") #替换岁字（替换数据框每一列某个字符）
+szkup2 <- transform(szkup2, 年龄 = as.numeric(年龄)) #将年龄转换为数字型
+szkup2 <- szkup2 %>% drop_na(年龄)  #去除年龄中缺失值
+ 
+szkhigh <- szkup2 %>% 
+  mutate(
+   年龄段 = case_when(
+     年龄 >= 1 & 年龄< 2 ~ "1~",
+     年龄 >= 2 & 年龄< 3 ~ "2~",
+     年龄 >= 3 & 年龄< 4 ~ "3~",
+     年龄 >= 4 & 年龄< 5 ~ "4~",
+     年龄 >= 5 & 年龄< 6 ~ "5~",
+     年龄 >= 6 ~ "6~"
+  )
+)
+
+szktotal <- rbind(szklow,szkhigh) #合并小于1岁和大于1岁的病例
+
+```
+
+
+```{r}   
+
+szkdate <- szktotal %>% filter(!(现住地址国标 == 320507999 | 现住地址国标 == "开发区")) %>% 
+  separate(发病日期, into = c("year", "mon" ,"day"), sep = "/") %>% select(患者姓名, 现住地址国标, year, mon ,day, 性别 , 年龄段, 重症患者, 人群分类, 确诊病毒)   #拆分日期 过滤掉无效地址
+szkyearmon <- szkdate %>% 
+  unite(col = "yearmon", c(year, mon), sep = "-", remove = FALSE)
+
+szkunite <- szkdate %>% 
+  unite(col = "date", c(现住地址国标,year, mon), sep = "-", remove = FALSE) #合并现住址和年月，为计算不同街道月报卡数准备
+
+# szkdate
+```
+
+
+
+
+```{r}
+szkymd <- szkyearmonday  %>% group_by(ymd) %>% summarise(n = n()) 
+szkny <-  szkyearmon  %>% group_by(yearmon) %>% summarise(n = n()) #不同年月的报卡数
+szkhj <-  szkunite %>% group_by(date) %>% summarise(n = n()) #计算各乡镇单位每月报卡数
+szkxzhj <-  szkdate %>% group_by(现住地址国标) %>% summarise(n = n())  #计算各乡镇所有报卡数
+szkmon <- szkdate %>% group_by(mon) %>% summarise(n = n()) #计算所有月份的总报卡数
+szkgrade <- szkdate %>% group_by(性别) %>% summarise(n = n())  #不同性别报卡数
+szkyear <- szkdate %>% group_by(year) %>% summarise(n = n())  #不同年份报卡数
+szknld <- szkdate %>% group_by(年龄段) %>% summarise(n = n())  #不同年年龄段报卡数
+szkzzhz <- szkdate %>% group_by(重症患者) %>% summarise(n = n()) #重症患者统计
+szkclass <- szkdate %>% group_by(人群分类) %>% summarise(n = n())  
+szkvirus <- szkdate %>% group_by(确诊病毒) %>% summarise(n = n())  #统计确诊病毒种类
+
+szjzzhz <- xtabs(~ 年龄段+ 性别,data=szkdate) #制作四个表
+szknfhz <- xtabs(~ year+ 重症患者,data=szkdate)  #手足口不同年份重症病例数
+szknybk <- xtabs(~ mon+ year,data=szkdate)  #不同月份每年的报卡 四格表
+szkyearage <- xtabs(~ 年龄段+year ,data=szkdate) 
+szktowngender <- xtabs(~ 现住地址国标+性别,data=szkdate) #不同乡镇各年份年份报卡
+szkageclass <- xtabs(~ 年龄段+人群分类,data=szkdate) 
+szkyeargender <- xtabs(~ year+性别,data=szkdate) #不同年份性别
+szkyearvirus <- xtabs(~ year+确诊病毒,data=szkdate)  #不同年份确诊病毒情况
+
+```
+```{r}
+write.csv(szknybk,"G:/文献/流行病特征分析/szknybk.csv", fileEncoding = "GB18030")
+```
+
+
+```{r}
+szknybk <- data.frame(szknybk)
+szknybk$Freq <- as.numeric(szknybk$Freq)
+ggplot(szknybk, aes(
+      x =  mon,
+      y = Freq,
+      color = year
+      ))+
+       geom_line() 
+```
+
+
+```{r}
+#时间序列
+
+colnames(szknybk) <- NULL  #去除列变量名
+rownames(szknybk) <- NULL  #去除行变量名
+szknybk2 <- c(szknybk)
+library(forecast) #载入所需包
+library(tseries) #载入所需包
+szknybk2 <- ts(szknybk2,frequency = 12,start = c(2012, 1))  #转换为是时间序列格式
+
+szknybk2
+
+szktimeseries <- auto.arima(szknybk2,seasonal = TRUE, trace = TRUE)
+
+
+
+```
+5. 模型预测
+
+```{r}
+
+ycszk <- forecast(szktimeseries,6) #预测12个月
+ycszk
+plot(forecast(szktimeseries,6),xlab="Year",ylab="Annual Flow") #绘制预测图
+```
+
+
+
+```{r}
+szkoneup <- szkdate %>% filter(年龄段 == "1~") #一岁以上每月发病数
+szkoneup <- szkoneuo %>% 
+  unite(col = "date", c(year, mon), sep = "-", remove = FALSE)
+
+szkoneyear <- xtabs(~ date + 年龄段,data=szkoneup)
+szkonemon <- xtabs(~ mon + 年龄段,data=szkoneup)
+write.csv(szkonemon,"G:/文献/流行病特征分析/一岁以上.csv", fileEncoding = "GB18030")
+```
+
+
+```{r}
+szkthreeup <- szkdate %>% filter(年龄段 == "3~") #三岁以上每月发病数
+szkthreeup <- szkthreeup %>% 
+  unite(col = "date", c(year, mon), sep = "-", remove = FALSE)
+
+szkthreeyear <- xtabs(~ date + 年龄段,data=szkthreeup)
+szkthreemon <- xtabs(~ mon + 年龄段,data=szkthreeup)
+write.csv(szkthreemon,"G:/文献/流行病特征分析/三岁以上.csv", fileEncoding = "GB18030")
+```
+
+
+```{r}
+szkfourup <- szkdate %>% filter(年龄段 == "4~") #四岁以上每月发病数
+szkfourup <- szkfourup %>% 
+  unite(col = "date", c(year, mon), sep = "-", remove = FALSE)
+
+szkfouryear <- xtabs(~ date + 年龄段,data=szkfourup)
+szkfourmon <- xtabs(~ mon + 年龄段,data=szkfourup)
+write.csv(szkfourmon,"G:/文献/流行病特征分析/四岁以上.csv", fileEncoding = "GB18030")
+```
+
+
+```{r}
+szk0up <- szkdate %>% filter(年龄段 == "0~") #0岁以上每月发病数
+szk0up <- szk0up %>% 
+  unite(col = "date", c(year, mon), sep = "-", remove = FALSE)
+
+szk0year <- xtabs(~ date + 年龄段,data=szk0up)
+szk0mon <- xtabs(~ mon + 年龄段,data=szk0up)
+write.csv(szk0mon,"G:/文献/流行病特征分析/0岁以上.csv", fileEncoding = "GB18030")
+```
+
+
+
+```{r}
+szk2up <- szkdate %>% filter(年龄段 == "2~") #2岁以上每月发病数
+szk2up <- szk0up %>% 
+  unite(col = "date", c(year, mon), sep = "-", remove = FALSE)
+
+szk2year <- xtabs(~ date + 年龄段,data=szk2up)
+szk2mon <- xtabs(~ mon + 年龄段,data=szk2up)
+write.csv(szk2mon,"G:/文献/流行病特征分析/2岁以上.csv", fileEncoding = "GB18030")
+```
+
+```{r}
+szk5up <- szkdate %>% filter(年龄段 == "5~") #5岁以上每月发病数
+szk5up <- szk5up %>% 
+  unite(col = "date", c(year, mon), sep = "-", remove = FALSE)
+
+szk5year <- xtabs(~ date + 年龄段,data=szk5up)
+szk5mon <- xtabs(~ mon + 年龄段,data=szk5up)
+write.csv(szk5mon,"G:/文献/流行病特征分析/5岁以上.csv", fileEncoding = "GB18030")
+```
+
+```{r}
+szk6up <- szkdate %>% filter(年龄段 == "6~") #6岁以上每月发病数
+szk6up <- szk6up %>% 
+  unite(col = "date", c(year, mon), sep = "-", remove = FALSE)
+
+szk6year <- xtabs(~ date + 年龄段,data=szk6up)
+szk6mon <- xtabs(~ mon + 年龄段,data=szk6up)
+write.csv(szk6mon,"G:/文献/流行病特征分析/6岁以上.csv", fileEncoding = "GB18030")
+```
+
+
+```{r}
+#对不同年份发病的构成比进行卡方分析
+szkchiq <- read.csv("G:/文献/流行病特征分析/不同年份报卡卡方计算.csv", header=F,stringsAsFactors = FALSE, fileEncoding = "GB18030")
+
+M <- matrix(szkchiq$V1, nrow = 11,byrow = T,
+            dimnames = list(trt = c("2012","2013","2014","2015","2016","2017","2018","2019", "2020","2021", "2022"),
+                            effect = c("发病数","未发病数")))
+kf <- chisq.test(M, correct = F)
+
+kf
+```
+
+
+
